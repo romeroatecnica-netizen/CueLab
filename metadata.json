@@ -1,0 +1,6 @@
+{
+  "name": "CueLab — Nonverbal Communication Trainer & Body Language Quiz",
+  "description": "Interactive browser-local training lab for structured nonverbal cue observation, verbal-gesture incongruence detection, baseline calibration, and assertive response practice across 10 languages.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
