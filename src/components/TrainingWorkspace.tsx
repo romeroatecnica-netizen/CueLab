@@ -11,6 +11,7 @@ import {
   Target,
   X,
 } from 'lucide-react';
+import {getShareUrl} from '../config/seo';
 import {getScenariosByCategory, getScenariosByMode} from '../data/scenarios';
 import type {UiStrings} from '../i18n/uiTranslations';
 import type {CueCategory, LangCode, Scenario, TrainingMode, ViewZoomMode} from '../types/cuelab';
@@ -127,7 +128,7 @@ export const TrainingWorkspace: React.FC<TrainingWorkspaceProps> = ({
   }, []);
 
   const handleCopyShare = useCallback(async () => {
-    const shareUrl = `${window.location.origin}${window.location.pathname}?mode=${mode}&lang=${lang}`;
+    const shareUrl = getShareUrl(mode, lang);
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopiedLink(true);

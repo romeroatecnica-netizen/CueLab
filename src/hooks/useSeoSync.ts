@@ -1,7 +1,8 @@
 import {useEffect} from 'react';
+import {CANONICAL_ORIGIN, getCanonicalUrl} from '../config/seo';
+import {EDITORIAL_TRANSLATIONS} from '../i18n/editorialTranslations';
 import {getLanguageMeta, SUPPORTED_LANGUAGES} from '../i18n/languages';
 import {UI_TRANSLATIONS} from '../i18n/uiTranslations';
-import {EDITORIAL_TRANSLATIONS} from '../i18n/editorialTranslations';
 import type {LangCode, TrainingMode} from '../types/cuelab';
 
 function upsertMeta(attr: 'name' | 'property', key: string, content: string): void {
@@ -64,30 +65,37 @@ export function useSeoSync(lang: LangCode, mode: TrainingMode): void {
     upsertMeta('name', 'twitter:title', fullTitle);
     upsertMeta('name', 'twitter:description', fullDescription);
 
-    // 3. Sync canonical & hreflang URLs
-    const originPath = `${window.location.origin}${window.location.pathname}`;
-    const canonicalUrl = `${originPath}?mode=${mode}&lang=${lang}`;
+    // 3. Sync canonical, og:url & hreflang URLs strictly from CANONICAL_ORIGIN
+    const canonicalUrl = getCanonicalUrl(lang);
     upsertLink('canonical', canonicalUrl);
     upsertMeta('property', 'og:url', canonicalUrl);
 
-    upsertLink('alternate', `${originPath}?mode=${mode}&lang=en`, 'x-default');
+    upsertLink('alternate', `${CANONICAL_ORIGIN}/`, 'x-default');
     for (const item of SUPPORTED_LANGUAGES) {
-      upsertLink('alternate', `${originPath}?mode=${mode}&lang=${item.code}`, item.hreflang);
+      upsertLink('alternate', getCanonicalUrl(item.code), item.hreflang);
     }
 
-    // 4. Sync URL query params cleanly without reloading
+    // 4. Sync local browser URL query state cleanly (omitting ?lang=en on default root)
     const currentParams = new URLSearchParams(window.location.search);
-    if (currentParams.get('lang') !== lang || currentParams.get('mode') !== mode) {
-      currentParams.set('mode', mode);
-      currentParams.set('lang', lang);
-      const nextUrl = `${window.location.pathname}?${currentParams.toString()}${window.location.hash}`;
-      window.history.replaceState(null, '', nextUrl);
+    const desiredParams = new URLSearchParams();
+    if (mode !== 'rapid' || currentParams.has('mode')) {
+      desiredParams.set('mode', mode);
+    }
+    if (lang !== 'en') {
+      desiredParams.set('lang', lang);
+    }
+    const desiredSearch = desiredParams.toString();
+    const desiredRelativeUrl = `${window.location.pathname}${desiredSearch ? `?${desiredSearch}` : ''}${window.location.hash}`;
+    const currentRelativeUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (desiredRelativeUrl !== currentRelativeUrl) {
+      window.history.replaceState(null, '', desiredRelativeUrl);
     }
 
-    // 5. Inject localized JSON-LD: SoftwareApplication + FAQPage
+    // 5. Inject localized JSON-LD: SoftwareApplication + FAQPage using CANONICAL_ORIGIN
     upsertJsonLd('cuelab-jsonld-app', {
       '@context': 'https://schema.org',
       '@type': 'SoftwareApplication',
+      '@id': `${CANONICAL_ORIGIN}/#software`,
       name: ui.seo.baseTitle,
       applicationCategory: 'EducationalApplication',
       operatingSystem: 'Web',
@@ -110,6 +118,8 @@ export function useSeoSync(lang: LangCode, mode: TrainingMode): void {
     upsertJsonLd('cuelab-jsonld-faq', {
       '@context': 'https://schema.org',
       '@type': 'FAQPage',
+      '@id': `${canonicalUrl}#faq`,
+      url: canonicalUrl,
       inLanguage: meta.code,
       mainEntity: editorial.faqs.map((faq) => ({
         '@type': 'Question',
